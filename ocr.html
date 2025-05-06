@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>📖 Book Text Extractor (OCR)</title>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: auto; background-color: #f9f9f9; }
+    h1 { font-size: 36px; color: #4CAF50; text-align: center; margin-bottom: 20px; }
+    #result { background-color: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); font-size: 14px; white-space: pre-wrap; }
+    input[type="file"], button { padding: 10px 20px; border-radius: 5px; border: none; font-size: 16px; cursor: pointer; }
+    button { background-color: #4CAF50; color: white; margin: 10px 0; transition: background-color 0.3s; }
+    button:hover { background-color: #45a049; }
+    input[type="file"] { display: none; }
+    label { background-color: #008CBA; color: white; padding: 10px 20px; cursor: pointer; border-radius: 5px; }
+    label:hover { background-color: #007B9E; }
+    .loading {
+      border: 5px solid #f3f3f3;
+      border-top: 5px solid #3498db;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 2s linear infinite;
+      display: none;
+      margin: 20px auto;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    @media screen and (max-width: 768px) {
+      body { padding: 10px; }
+      h1 { font-size: 28px; }
+      button { width: 100%; }
+      label { width: 100%; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <h1>📚 Book Image OCR Converter</h1>
+  <p>Upload a book photo and extract text from it automatically.</p>
+
+  <input type="file" id="imageInput" accept="image/*">
+  <label for="imageInput">Choose an image</label>
+  <br>
+  <button onclick="runOCR()">Run OCR</button>
+  <button onclick="downloadText()">📥 Download Result (.txt)</button>
+
+  <div class="loading" id="loadingSpinner"></div>
+
+  <h2>🔍 Extracted Result (JSON Format)</h2>
+  <div id="result">The extracted result will appear here.</div>
+
+  <script>
+    let lastResult = null;
+
+    function runOCR() {
+      const file = document.getElementById('imageInput').files[0];
+      if (!file) {
+        alert("Please select a book image.");
+        return;
+      }
+
+      // Show loading spinner
+      document.getElementById('loadingSpinner').style.display = 'block';
+
+      const reader = new FileReader();
+      reader.onload = function () {
+        const imageData = reader.result;
+        Tesseract.recognize(
+          imageData,
+          'kor+eng', // Korean + English recognition
+          { logger: m => console.log(m) }
+        ).then(({ data: { text } }) => {
+          const jsonResult = {
+            filename: file.name,
+            extracted_text: text.trim(),
+            timestamp: new Date().toISOString()
+          };
+          lastResult = jsonResult;
+          document.getElementById('result').textContent = JSON.stringify(jsonResult, null, 2);
+          
+          // Hide loading spinner
+          document.getElementById('loadingSpinner').style.display = 'none';
+        }).catch((error) => {
+          console.error(error);
+          alert("An error occurred during OCR. Please try again.");
+          // Hide loading spinner
+          document.getElementById('loadingSpinner').style.display = 'none';
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function downloadText() {
+      if (!lastResult) {
+        alert("Please run OCR first.");
+        return;
+      }
+
+      const blob = new Blob([JSON.stringify(lastResult, null, 2)], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = lastResult.filename.replace(/\.[^/.]+$/, "") + "_ocr.txt";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+  </script>
+
+</body>
+</html>
